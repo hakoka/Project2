@@ -1,0 +1,53 @@
+version: '1.0'
+stages:
+  - clone
+  - build
+  - test
+  - push
+  - notify
+
+steps:
+  clone_repo:
+    title: Cloning Repository
+    type: git-clone
+    repo: 'Akshiv20/codefresh-training-app'
+    revision: main
+    stage: clone
+
+  build_image:
+    title: Building Docker Image
+    type: build
+    image_name: akshiv20/codefresh-training-app
+    tag: '${{CF_SHORT_REVISION}}'
+    dockerfile: Dockerfile
+    working_directory: '${{clone_repo}}'
+    stage: build
+
+  run_tests:
+    title: Running Unit Tests
+    image: node:18
+    working_directory: '${{clone_repo}}'
+    commands:
+      - npm install
+      - npm test
+    stage: test
+
+  push_image:
+    title: Pushing Docker Image
+    type: push
+    candidate: '${{build_image}}'
+    registry: dockerhub
+    stage: push
+
+  notify_slack:
+    title: Notify on Slack
+    type: slack
+    arguments:
+      webhook_url: '${{SLACK_WEBHOOK}}'
+      message: |
+        *Codefresh Pipeline Completed*
+        Status: `${{CF_STATUS}}`
+        Branch: `${{CF_BRANCH}}`
+        Commit: `${{CF_COMMIT_MESSAGE}}`
+        Link: ${{CF_BUILD_URL}}
+    stage: notify
